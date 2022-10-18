@@ -20,7 +20,7 @@ const scene = new THREE.Scene();
 // const mesh = new THREE.Mesh( geometry, material );
 // scene.add( mesh );
 
-const renderer = new THREE.WebGLRenderer( { antialias: true} );
+const renderer = new THREE.WebGLRenderer( { antialias: true, alpha: true} );
 renderer.setSize( window.innerWidth, window.innerHeight );
 renderer.setAnimationLoop( animation );
 document.body.appendChild( renderer.domElement );
@@ -44,6 +44,7 @@ function animation( time: number ) {
   cloth.resetAcceleration();
   cloth.calculateSpringForce();
   cloth.move(clock.getDelta());
+  cloth.updateSpringPosition();
   renderer.render( scene, camera );
 }
 
@@ -55,24 +56,18 @@ cloth.createSprings();
 //Render Nodes
 
 for(let i of cloth.getNodes()){
-	console.log(i);
 	scene.add(i.obj);
 }
 
 //Render Springs
 const linemat = new THREE.LineBasicMaterial();
 for(let i of cloth.getSprings()){
-	console.log(i);
-	const points = [];
-	const nodes = i.getNodes();
-	// console.log(nodes);
-	points.push(nodes[0].getPosition());
-	points.push(nodes[1].getPosition());
-
-	const geo = new THREE.BufferGeometry().setFromPoints(points);
-	const line = new THREE.Line(geo, linemat);
+	console.log(i.line);
 	scene.add(i.line);
 }
+
+const light = new THREE.AmbientLight( 0x404040 ); // soft white light
+scene.add( light );
 
 //Try 2:
 // const clothGeo = new ParametricGeometry();
@@ -98,6 +93,7 @@ for(let i of cloth.getSprings()){
 // const nodes = [];
 // const accelerations = [];
 // const velocity = [];
+
 
 
 

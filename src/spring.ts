@@ -10,7 +10,8 @@ export class Spring{
     private k: number; // Spring constant
     private kv: number //Dampening constant
 
-    public line: THREE.Mesh;
+    public line: THREE.Line;
+    private positions: ArrayLike<number>;
 
     constructor(connection1: Node, connection2: Node){
         if(connection1 == null || connection2 == null){
@@ -21,17 +22,17 @@ export class Spring{
         this.k = 1;
         this.kv = 10;
         const points = [];
-        points.push(this.nodes[0].getPosition(), this.nodes[1].getPosition());
-        const linemat = new THREE.LineBasicMaterial();
+        points.push(this.nodes[0].getPosition());
+        points.push(this.nodes[1].getPosition());
+        console.log("points", points);
         const geo = new THREE.BufferGeometry().setFromPoints(points);
-	   
         
-    
-        const material = new THREE.MeshBasicMaterial( { color: 0xfffffff } );
-        const mesh = new THREE.Mesh( geo, linemat );
+        var material = new THREE.LineBasicMaterial({ color: 0xff00ff });
+        const mesh = new THREE.Line( geo, material);
         this.line = mesh;
-        console.log(this.line);
-        mesh.geometry.attributes.position.needsUpdate = true;
+        
+        
+        this.positions = this.line.geometry.attributes.position.array;
     }
 
     calculateForce(){
@@ -66,12 +67,28 @@ export class Spring{
     updateSpringPosition(){
         const node1 = this.nodes[0].getPosition();
         const node2 = this.nodes[1].getPosition();
-        const vertices = new Float32Array( [
-            node1.x, node1.y,  node1.z,
-             node2.x, node2.y,  node2.z,
-        ] );
+        // const vertices = new Float32Array( [
+        //     node1.x, node1.y,  node1.z,
+        //      node2.x, node2.y,  node2.z,
+        // ] );
 
-        this.line.geometry.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+        // console.log(this.line)
+        // const pos1 = this.nodes[0].getPosition();
+        // const pos2 = this.nodes[0].getPosition();
+        // const newVertex = [pos1.x, pos1.y, pos1.z, pos2.x, pos2.y, pos2.z];
+
+        // this.positions[0] = pos1.x;
+        // this.line.geometry.attributes.position.array = newVertex;
+        // this.line.geometry.attributes.position.needsUpdate = true;
+
+        const points = [];
+        points.push( new THREE.Vector3( node1.x, node1.y, node1.z ) );
+        points.push( new THREE.Vector3( node2.x, node2.y, node2.z ) );
+
+        const geometry = new THREE.BufferGeometry().setFromPoints( points );
+        var material = new THREE.LineBasicMaterial({ color: 0xff00ff });
+        const mesh = new THREE.Line( geometry, material);
+        this.line = mesh;
     }
 
     getNodes(){

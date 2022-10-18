@@ -23,7 +23,6 @@ export class Node {
         this.acceleration.add(this.velocity.multiplyScalar(-1 * this.fric));
         this.velocity.add(this.acceleration.multiplyScalar(dt));
         this.obj.position.add(this.velocity.multiplyScalar(dt));
-        // this.obj.position.add(new THREE.Vector3(0,.01, 0));
     }
     
     setAcceleration(acc: THREE.Vector3){

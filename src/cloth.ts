@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import { Vector3 } from 'three';
 
 export class Cloth{
-    private gravity = new THREE.Vector3(0, -5, 0);
+    private gravity = new THREE.Vector3(0, -1, 0);
     private springs: Spring[];
     private nodeList: Node[];
 
