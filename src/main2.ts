@@ -1,12 +1,12 @@
 
 import * as THREE from 'three';
-import { Vector3 } from 'three';
+import { LineSegments, Vector3 } from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls';
 import './style.css';
 
 
 //SCENE STUFF STARTS HERE:
-const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 10 );
+const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 100 );
 camera.position.z = 1;
 
 const scene = new THREE.Scene();
@@ -33,7 +33,7 @@ window.addEventListener('resize', function()
 
 let accelerations: THREE.Vector3[] = [];
 let velocities: THREE.Vector3[] = [];
-const gravity = new THREE.Vector3(0, -10, 0);
+const gravity = new THREE.Vector3(0, -25, 0);
 const k = 10; 
 const kv = 10;
 const restLen = 1;
@@ -42,6 +42,7 @@ const fric = .1;
 
 //Fun stuff starts here.
 const nodes: THREE.Mesh[] = [];
+let lines: THREE.Line[] = [];
 
 const mat = new THREE.MeshBasicMaterial({color: 0x00ff00});
 const geo = new THREE.SphereGeometry(.05);
@@ -107,6 +108,32 @@ function animation( time: number ) {
         velocities[i].add(accelerations[i].multiplyScalar(dt));
         nodes[i].position.add(velocities[i].multiplyScalar(dt));
     }
+
+
+    //Draw Lines
+    const material = new THREE.LineBasicMaterial( { color: 0xff00ff } );
+    for(let i of lines){
+        scene.remove(i);
+    }
+
+    lines = [];
+    
+    for(let i = 0; i < nodes.length - 1; i++){
+        
+        const points = [];
+        points.push( nodes[i].position);
+        points.push( nodes[i+1].position);
+
+        const geometry = new THREE.BufferGeometry().setFromPoints( points );
+        const line = new THREE.Line( geometry, material );
+        
+       lines.push(line);
+    }
+
+    for(let i of lines){
+        scene.add(i);
+    }
+    
     // console.log(accelerations )
   renderer.render( scene, camera );
 }
@@ -117,22 +144,22 @@ function animation( time: number ) {
 
 
 
-const geometry = new THREE.BufferGeometry();
-// create a simple square shape. We duplicate the top left and bottom right
-// vertices because each vertex needs to appear once per triangle.
-const vertices = new Float32Array( [
-	-1.0, -1.0,  1.0,
-	 1.0, -1.0,  1.0,
-	 1.0,  1.0,  1.0,
+// const geometry = new THREE.BufferGeometry();
+// // create a simple square shape. We duplicate the top left and bottom right
+// // vertices because each vertex needs to appear once per triangle.
+// const vertices = new Float32Array( [
+// 	-1.0, -1.0,  1.0,
+// 	 1.0, -1.0,  1.0,
+// 	 1.0,  1.0,  1.0,
 
-	 1.0,  1.0,  1.0,
-	-1.0,  1.0,  1.0,
-	-1.0, -1.0,  1.0
-] );
+// 	 1.0,  1.0,  1.0,
+// 	-1.0,  1.0,  1.0,
+// 	-1.0, -1.0,  1.0
+// ] );
 
-// itemSize = 3 because there are 3 values (components) per vertex
-geometry.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
-const material = new THREE.MeshBasicMaterial( { color: 0xff0000, side: THREE.DoubleSide, wireframe: true} );
-const mesh = new THREE.Mesh( geometry, material );
+// // itemSize = 3 because there are 3 values (components) per vertex
+// geometry.setAttribute( 'position', new THREE.BufferAttribute( vertices, 3 ) );
+// const material = new THREE.MeshBasicMaterial( { color: 0xff0000, side: THREE.DoubleSide, wireframe: true} );
+// const mesh = new THREE.Mesh( geometry, material );
 
-scene.add(mesh)
+// scene.add(mesh)
