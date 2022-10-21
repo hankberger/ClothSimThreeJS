@@ -11,7 +11,7 @@ camera.position.z = 1;
 
 const scene = new THREE.Scene();
 
-const renderer = new THREE.WebGLRenderer( { antialias: true , alpha: true} );
+const renderer = new THREE.WebGLRenderer( { antialias: true , alpha: false} );
 renderer.setSize( window.innerWidth, window.innerHeight );
 renderer.setAnimationLoop( render );
 document.body.appendChild( renderer.domElement );
@@ -35,14 +35,16 @@ function render(){
     for(let i = 0; i < 10; i++){
         update(dt/10);
     }
+    updateNodes();
+    drawLines();
+    renderPlanes();
     
     renderer.render(scene, camera);
 }
-
-const geometry = new THREE.SphereGeometry( .5, 32, 16 );
-const material = new THREE.MeshBasicMaterial( { color: 0x0000ff } );
+const geometry = new THREE.SphereGeometry( .75, 32, 16 );
+const material = new THREE.MeshBasicMaterial( { color: 0x0000ff, side: THREE.DoubleSide } );
 const sphere = new THREE.Mesh( geometry, material );
-sphere.position.set(-1, -2, 0);
+sphere.position.set(0, -1.5, 0);
 scene.add( sphere );
 
 let sphereForce = new Vector3();
@@ -71,6 +73,7 @@ document.addEventListener('keydown', (e)=>{
 
 const nodes: THREE.Mesh[] = [];
 const springs: THREE.Line[] = [];
+const planes: THREE.Mesh[] = [];
 const positions: THREE.Vector3[] = [];
 const velocities: THREE.Vector3[] = [];
 const accelerations: THREE.Vector3[] = [];
@@ -79,11 +82,11 @@ const numRopes = 5;
 
 //Parameters
 const grav = new Vector3(0,-2, 0);
-const restlen = .5;
+const restlen = .25;
 const mass = 1;
 const k = 20; 
-const kv = 1;
-const friction = .1;
+const kv = 10;
+const friction = 1;
 
 function update(dt: number){
     //Reset accelerations
@@ -95,6 +98,7 @@ function update(dt: number){
     //Calculate Spring Forces
     let skip = 1;
     for(let i = 0; i < numNodes - 1; i++){
+        //Vertical Springs
         if(skip % 5 == 0) {
             skip++
             continue;
@@ -126,6 +130,38 @@ function update(dt: number){
         accelerations[i].add(thisForce);
         accelerations[i+1].add(nextForce);
         skip++;
+
+        //Horizontal Springs
+        if(i >= nodes.length - 5){
+            continue;
+        }
+        const hrestlen = .25;
+        const hdiff = new Vector3();
+        hdiff.subVectors(nodes[i+5].position, nodes[i].position);
+        
+        const hstringf = -k*(hdiff.length() - hrestlen);
+        const hstringDir = new Vector3();
+        hstringDir.copy(hdiff);
+        hstringDir.normalize();
+
+        const hprojVbot = velocities[i].dot(hstringDir);
+        const hprojVtop = velocities[i + 5].dot(hstringDir);
+        
+        const hdampf = -kv*(hprojVtop - hprojVbot);
+
+        const hforce = new Vector3();
+        hforce.copy(hstringDir);
+        hforce.multiplyScalar(hstringf+hdampf);
+        const hthisForce = new Vector3();
+        hthisForce.copy(hforce);
+        hthisForce.multiplyScalar(-1/mass);
+
+        const hnextForce = new Vector3();
+        hnextForce.copy(hforce);
+        hnextForce.multiplyScalar(1/mass);
+        
+        accelerations[i].add(hthisForce);
+        accelerations[i+5].add(hnextForce);
     }
 
     for(let i = 0; i < nodes.length; i++){
@@ -155,12 +191,13 @@ function update(dt: number){
 
         const dir = new Vector3();
         dir.copy(collision);
-        dir.multiplyScalar(.05);
+        dir.normalize();
+        dir.multiplyScalar(.001);
 
-        if(collision.length() < .58){
-            velocities[i].multiplyScalar(0);
+        if(collision.length() < .82){
+            velocities[i] = new Vector3(0,0,0);
             positions[i].sub(dir);
-            console.log("COLLISION!")
+
         }
     }
 
@@ -168,20 +205,19 @@ function update(dt: number){
     sphereVel.copy(sphereForce);
     sphereVel.multiplyScalar(dt);
     sphere.position.add(sphereVel);
-    updateNodes();
-    drawLines();
+    
 
 }
 
 function initScene(){
-    const geometry = new THREE.SphereGeometry( .1, 32, 16 );
-    const material = new THREE.MeshBasicMaterial( { color: 0xffff00 } );
+    const geometry = new THREE.SphereGeometry( .01, 32, 16 );
+    const material = new THREE.MeshLambertMaterial( { color: 0xffff00 } );
     
     for(let j = 0; j < numRopes; j++){
         for(let i = 0; i < 5; i++){
             const sphere = new THREE.Mesh( geometry, material );
-            sphere.position.set(j*2, -i*.8, i*.1);
-            positions.push(new Vector3(j*2,-i*.8,i*.2));
+            sphere.position.set(j*.25, 0, i*.5);
+            positions.push(new Vector3(j*.25,0, i*.5));
             velocities.push(new Vector3(0,0,0));
             accelerations.push(new Vector3(0,0,0));
             nodes.push(sphere);
@@ -221,8 +257,53 @@ function drawLines(){
             scene.add( line );
         } 
         skips++
+
+        if(i < nodes.length - 5){
+            const sidePoints = [];
+            sidePoints.push(nodes[i].position);
+            sidePoints.push(nodes[i+5].position);
+            const geom = new THREE.BufferGeometry().setFromPoints( sidePoints );
+            const yeet = new THREE.Line( geom, material );
+            springs.push(yeet);
+            scene.add(yeet);
+        }
     }
 }
 
+function renderPlanes(){
+    for(let i of planes){
+        scene.remove(i);
+    }
+
+    for(let i = 0; i < nodes.length - 5; i++){
+
+        // const plane = new THREE.Plane();
+        // plane.setFromCoplanarPoints(nodes[i].position, nodes[i+1].position, nodes[i+5].position);
+        // plane.translate(nodes[i].position);
+        
+        // const helper = new THREE.PlaneHelper( plane, 1, 0xffff00 );
+        // planes.push(helper);
+        // scene.add( helper );
+        if(i <= 3 || i > 4 && i < 9 || i > 9 && i < 14 || i > 14 && i < 19) { //I'm so f*king sorry
+            const plane = new THREE.PlaneGeometry();
+            const points = [nodes[i].position, nodes[i+1].position, nodes[i+5].position,  nodes[i+6].position];
+            plane.setFromPoints(points);
+            const material = new THREE.MeshLambertMaterial( {color: 0xff0000, side: THREE.DoubleSide} );
+            const wtf = new THREE.Mesh(plane, material);
+
+            planes.push(wtf);
+            scene.add(wtf);
+        }
+        
+    }
+}
+
+const light = new THREE.PointLight( 0xff0000, 1, 100 );
+light.position.set( 1, 1, 1 );
+scene.add( light );
+
+const light2 = new THREE.PointLight( 0xff0000, 1, 100 );
+light2.position.set( 1, 1, -1 );
+scene.add( light2 );
 
 
