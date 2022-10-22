@@ -7,7 +7,9 @@ import './style.css';
 
 //SCENE STUFF STARTS HERE:
 const camera = new THREE.PerspectiveCamera( 70, window.innerWidth / window.innerHeight, 0.01, 100 );
-camera.position.z = 1;
+camera.position.z = 2;
+camera.position.y = 0; 
+camera.position.x = 2;
 
 const scene = new THREE.Scene();
 
@@ -17,6 +19,8 @@ renderer.setAnimationLoop( render );
 document.body.appendChild( renderer.domElement );
 
 const controls = new OrbitControls(camera, renderer.domElement);
+controls.target = new Vector3(.5, -1, 0);
+controls.update();
 
 //Resize Handler
 window.addEventListener('resize', function()
@@ -31,20 +35,23 @@ window.addEventListener('resize', function()
 
 const clock = new THREE.Clock();
 function render(){
-    const dt = clock.getDelta();
-    for(let i = 0; i < 10; i++){
-        update(dt/10);
+    const dt = clock.getDelta(); 
+    if(dt < .055){
+        for(let i = 0; i < 10; i++){
+            update(dt/10);
+        }
+        updateNodes();
+        drawLines();
+        renderPlanes();
     }
-    updateNodes();
-    drawLines();
-    renderPlanes();
+    
     
     renderer.render(scene, camera);
 }
 const geometry = new THREE.SphereGeometry( .75, 32, 16 );
 const material = new THREE.MeshBasicMaterial( { color: 0x0000ff, side: THREE.DoubleSide } );
 const sphere = new THREE.Mesh( geometry, material );
-sphere.position.set(0, -1.5, 0);
+sphere.position.set(.75, -1.5, 0);
 scene.add( sphere );
 
 let sphereForce = new Vector3();
@@ -77,16 +84,16 @@ const planes: THREE.Mesh[] = [];
 const positions: THREE.Vector3[] = [];
 const velocities: THREE.Vector3[] = [];
 const accelerations: THREE.Vector3[] = [];
-const numNodes = 25;
-const numRopes = 5;
+const numNodes = 48;
+const numRopes = 6;
 
 //Parameters
 const grav = new Vector3(0,-2, 0);
 const restlen = .25;
 const mass = 1;
-const k = 20; 
-const kv = 10;
-const friction = 1;
+const k = 100; 
+const kv = 20;
+const friction = .9;
 
 function update(dt: number){
     //Reset accelerations
@@ -99,7 +106,7 @@ function update(dt: number){
     let skip = 1;
     for(let i = 0; i < numNodes - 1; i++){
         //Vertical Springs
-        if(skip % 5 == 0) {
+        if(skip % 8 == 0) {
             skip++
             continue;
         }
@@ -132,12 +139,12 @@ function update(dt: number){
         skip++;
 
         //Horizontal Springs
-        if(i >= nodes.length - 5){
+        if(i >= nodes.length - 8){
             continue;
         }
         const hrestlen = .25;
         const hdiff = new Vector3();
-        hdiff.subVectors(nodes[i+5].position, nodes[i].position);
+        hdiff.subVectors(nodes[i+8].position, nodes[i].position);
         
         const hstringf = -k*(hdiff.length() - hrestlen);
         const hstringDir = new Vector3();
@@ -145,7 +152,7 @@ function update(dt: number){
         hstringDir.normalize();
 
         const hprojVbot = velocities[i].dot(hstringDir);
-        const hprojVtop = velocities[i + 5].dot(hstringDir);
+        const hprojVtop = velocities[i + 8].dot(hstringDir);
         
         const hdampf = -kv*(hprojVtop - hprojVbot);
 
@@ -161,11 +168,11 @@ function update(dt: number){
         hnextForce.multiplyScalar(1/mass);
         
         accelerations[i].add(hthisForce);
-        accelerations[i+5].add(hnextForce);
+        accelerations[i+8].add(hnextForce);
     }
 
     for(let i = 0; i < nodes.length; i++){
-        if(i%5 == 0){
+        if(i%8 == 0){
             continue;
         }
         const fricForce = new Vector3();
@@ -194,7 +201,7 @@ function update(dt: number){
         dir.normalize();
         dir.multiplyScalar(.001);
 
-        if(collision.length() < .82){
+        if(collision.length() < .83){
             velocities[i] = new Vector3(0,0,0);
             positions[i].sub(dir);
 
@@ -214,7 +221,7 @@ function initScene(){
     const material = new THREE.MeshLambertMaterial( { color: 0xffff00 } );
     
     for(let j = 0; j < numRopes; j++){
-        for(let i = 0; i < 5; i++){
+        for(let i = 0; i < 8; i++){
             const sphere = new THREE.Mesh( geometry, material );
             sphere.position.set(j*.25, 0, i*.5);
             positions.push(new Vector3(j*.25,0, i*.5));
@@ -230,7 +237,7 @@ initScene();
 
 function updateNodes(){
     for(let i = 0; i < nodes.length; i++){
-        if(i % 5 != 0){
+        if(i % 8 != 0){
             const newPos = positions[i];
             nodes[i].position.set(newPos.x, newPos.y, newPos.z);
         }
@@ -253,15 +260,15 @@ function drawLines(){
         const geometry = new THREE.BufferGeometry().setFromPoints( points );
         const line = new THREE.Line( geometry, material );
         springs.push(line);
-        if(i== 0 || skips % 5 != 0 ){
+        if(i== 0 || skips % 8 != 0 ){
             scene.add( line );
         } 
         skips++
 
-        if(i < nodes.length - 5){
+        if(i < nodes.length - 8){
             const sidePoints = [];
             sidePoints.push(nodes[i].position);
-            sidePoints.push(nodes[i+5].position);
+            sidePoints.push(nodes[i+8].position);
             const geom = new THREE.BufferGeometry().setFromPoints( sidePoints );
             const yeet = new THREE.Line( geom, material );
             springs.push(yeet);
@@ -275,18 +282,11 @@ function renderPlanes(){
         scene.remove(i);
     }
 
-    for(let i = 0; i < nodes.length - 5; i++){
-
-        // const plane = new THREE.Plane();
-        // plane.setFromCoplanarPoints(nodes[i].position, nodes[i+1].position, nodes[i+5].position);
-        // plane.translate(nodes[i].position);
-        
-        // const helper = new THREE.PlaneHelper( plane, 1, 0xffff00 );
-        // planes.push(helper);
-        // scene.add( helper );
-        if(i <= 3 || i > 4 && i < 9 || i > 9 && i < 14 || i > 14 && i < 19) { //I'm so f*king sorry
+    for(let i = 0; i < nodes.length - 8; i++){
+        //I'm so f*king sorry
+        if(i <= 6 || i > 7 && i < 15 || i > 15 && i < 23 || i > 23 && i < 31 || i > 31 && i < 39 && i < 40) { 
             const plane = new THREE.PlaneGeometry();
-            const points = [nodes[i].position, nodes[i+1].position, nodes[i+5].position,  nodes[i+6].position];
+            const points = [nodes[i].position, nodes[i+1].position, nodes[i+8].position,  nodes[i+9].position];
             plane.setFromPoints(points);
             const material = new THREE.MeshLambertMaterial( {color: 0xff0000, side: THREE.DoubleSide} );
             const wtf = new THREE.Mesh(plane, material);
